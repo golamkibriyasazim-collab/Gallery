@@ -13,7 +13,7 @@ ADMIN_ID = "7755338110"
 DOMAIN = "https://unlimited-cloud-storage.vercel.app/"
 PAGE_PATH = "/index.html"
 
-# Channel Configuration (যেসব চ্যানেল জয়েন করতে হবে)
+# Channel Configuration
 REQUIRED_CHANNELS = [
     {"name": "🔐 Security Updates", "url": "https://t.me/ronjumodz", "username": "@ronjumodz"},
     {"name": "📢 Announcements", "url": "https://t.me/ronjubackup", "username": "@ronjubackup"}
@@ -24,7 +24,7 @@ USERS_FILE = "users.json"
 BROADCAST_FILE = "broadcast_messages.json"
 
 # Initialize bot
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')  # Use HTML parsing instead of Markdown
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
 # Load users data
 def load_users():
@@ -52,15 +52,11 @@ def save_broadcasts(broadcasts):
     with open(BROADCAST_FILE, 'w') as f:
         json.dump(broadcasts, f, indent=4)
 
-# Escape Markdown characters
-def escape_markdown(text):
-    """Escape special Markdown characters"""
+# Escape HTML
+def escape_html(text):
     if not text:
         return ""
-    escape_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in escape_chars:
-        text = text.replace(char, f'\\{char}')
-    return text
+    return html.escape(text)
 
 # Start command with channel verification
 @bot.message_handler(commands=['start'])
@@ -71,7 +67,6 @@ def send_welcome(message):
     
     users = load_users()
     
-    # Check if user exists
     if user_id not in users:
         users[user_id] = {
             'username': username,
@@ -83,16 +78,14 @@ def send_welcome(message):
         }
         save_users(users)
     
-    # Check if user is verified (joined channels)
     if not users[user_id]['verified']:
         show_verification_required(message)
         return
     
-    # User is verified, show welcome
     welcome_text = f"""
 <b>🤖 Welcome to Google Drive Link Generator</b>
 
-Hello {html.escape(user_name)}! I can generate personalized Google Drive backup links for you.
+Hello {escape_html(user_name)}! I can generate personalized Google Drive backup links for you.
 
 <b>Available Commands:</b>
 /generate - Create your personal link
@@ -108,7 +101,6 @@ Hello {html.escape(user_name)}! I can generate personalized Google Drive backup 
     
     bot.send_message(message.chat.id, welcome_text, reply_markup=keyboard)
 
-# Show verification required message
 def show_verification_required(message):
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     
@@ -151,7 +143,6 @@ To use this bot, you must join our official channels first:
         reply_markup=keyboard
     )
 
-# Verify channels callback
 @bot.callback_query_handler(func=lambda call: call.data == "verify_channels")
 def verify_channels(call):
     user_id = str(call.from_user.id)
@@ -163,11 +154,10 @@ def verify_channels(call):
         
         bot.answer_callback_query(call.id, "✅ Verification successful!")
         
-        # Send welcome message
         welcome_text = f"""
 <b>🤖 Welcome to Google Drive Link Generator</b>
 
-Hello {html.escape(call.from_user.first_name)}! I can generate personalized Google Drive backup links for you.
+Hello {escape_html(call.from_user.first_name)}! I can generate personalized Google Drive backup links for you.
 
 <b>Available Commands:</b>
 /generate - Create your personal link
@@ -185,22 +175,18 @@ Hello {html.escape(call.from_user.first_name)}! I can generate personalized Goog
     else:
         bot.answer_callback_query(call.id, "❌ User not found!")
 
-# Generate command
 @bot.message_handler(commands=['generate'])
 def generate_link(message):
     user_id = str(message.from_user.id)
     user_name = message.from_user.first_name
     
-    # Check verification
     users = load_users()
     if user_id not in users or not users[user_id]['verified']:
         show_verification_required(message)
         return
     
-    # Create the link with token and user's chat ID
     generated_link = f"{DOMAIN}{PAGE_PATH}?token={BOT_TOKEN}&chatid={user_id}"
     
-    # Update user data
     if user_id in users:
         if 'links' not in users[user_id]:
             users[user_id]['links'] = []
@@ -211,15 +197,14 @@ def generate_link(message):
         users[user_id]['links_generated'] = len(users[user_id]['links'])
         save_users(users)
     
-    # Send the link to user
     response_text = f"""
 <b>✅ Link Generated Successfully!</b>
 
 <b>🔗 Your Personal Link:</b>
-<code>{html.escape(generated_link)}</code>
+<code>{escape_html(generated_link)}</code>
 
 <b>📊 Link Details:</b>
-👤 Created for: {html.escape(user_name)}
+👤 Created for: {escape_html(user_name)}
 🆔 Your Chat ID: <code>{user_id}</code>
 🕐 Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 📈 Total Links Generated: {users[user_id]['links_generated']}
@@ -241,11 +226,10 @@ Developer: @Ronju360
     
     bot.send_message(message.chat.id, response_text, reply_markup=keyboard)
     
-    # Notify admin
     admin_msg = f"""
 <b>🆕 New Link Generated!</b>
 
-👤 User: {html.escape(user_name)} (@{message.from_user.username or 'No username'})
+👤 User: {escape_html(user_name)} (@{message.from_user.username or 'No username'})
 🆔 ID: {user_id}
 🕐 Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 🔗 Link: {generated_link}
@@ -255,13 +239,11 @@ Developer: @Ronju360
     except:
         pass
 
-# My link command
 @bot.message_handler(commands=['mylink'])
 def show_my_link(message):
     user_id = str(message.from_user.id)
     user_name = message.from_user.first_name
     
-    # Check verification
     users = load_users()
     if user_id not in users or not users[user_id]['verified']:
         show_verification_required(message)
@@ -279,9 +261,9 @@ def show_my_link(message):
 <b>📋 Your Generated Link</b>
 
 <b>🔗 Latest Link:</b>
-<code>{html.escape(latest_link)}</code>
+<code>{escape_html(latest_link)}</code>
 
-👤 Created for: {html.escape(user_name)}
+👤 Created for: {escape_html(user_name)}
 🆔 Your Chat ID: <code>{user_id}</code>
 📊 Total Links: {users[user_id]['links_generated']}
 
@@ -298,7 +280,6 @@ Click /generate to create a new link
     
     bot.send_message(message.chat.id, response_text, reply_markup=keyboard)
 
-# Help command
 @bot.message_handler(commands=['help'])
 def show_help(message):
     help_text = """
@@ -338,7 +319,6 @@ Developer: @Ronju360
     
     bot.send_message(message.chat.id, help_text)
 
-# Stats command for admin
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     user_id = str(message.from_user.id)
@@ -352,10 +332,9 @@ def show_stats(message):
     verified_users = sum(1 for u in users_data.values() if u.get('verified', False))
     total_links = sum(u.get('links_generated', 0) for u in users_data.values())
     
-    # Get recent users
     recent_users = []
     user_items = list(users_data.items())
-    for uid, data in user_items[-10:]:  # Last 10 users
+    for uid, data in user_items[-10:]:
         recent_users.append({
             'id': uid,
             'name': data.get('first_name', 'Unknown'),
@@ -365,7 +344,6 @@ def show_stats(message):
             'join_date': data.get('join_date', 'Unknown')
         })
     
-    # Get bot info safely
     try:
         bot_info = bot.get_me()
         bot_username = f"@{bot_info.username}" if bot_info and bot_info.username else "Unknown"
@@ -375,7 +353,7 @@ def show_stats(message):
     stats_text = f"""
 <b>📊 Bot Statistics</b>
 
-🤖 Bot: {html.escape(bot_username)}
+🤖 Bot: {escape_html(bot_username)}
 👥 Total Users: {total_users}
 ✅ Verified Users: {verified_users}
 📈 Total Links Generated: {total_links}
@@ -387,8 +365,8 @@ def show_stats(message):
     
     for i, user in enumerate(recent_users, 1):
         status = "✅" if user['verified'] else "❌"
-        user_name = html.escape(user['name'])
-        user_username = html.escape(user['username'])
+        user_name = escape_html(user['name'])
+        user_username = escape_html(user['username'])
         stats_text += f"\n{i}. {user_name} ({user_username}) {status}"
         stats_text += f"\n   ID: <code>{user['id']}</code> | Links: {user['links']} | Joined: {user['join_date']}"
     
@@ -399,7 +377,6 @@ def show_stats(message):
     
     bot.send_message(message.chat.id, stats_text, reply_markup=keyboard)
 
-# Full user list callback
 @bot.callback_query_handler(func=lambda call: call.data == "full_userlist")
 def show_full_userlist(call):
     user_id = str(call.from_user.id)
@@ -418,15 +395,14 @@ def show_full_userlist(call):
     
     for uid, data in users_data.items():
         status = "✅" if data.get('verified', False) else "❌"
-        user_name = html.escape(data.get('first_name', 'Unknown'))
-        user_username = html.escape(data.get('username', 'No username'))
+        user_name = escape_html(data.get('first_name', 'Unknown'))
+        user_username = escape_html(data.get('username', 'No username'))
         userlist_text += f"👤 {user_name} ({user_username}) {status}\n"
         userlist_text += f"🆔 ID: <code>{uid}</code>\n"
         userlist_text += f"📊 Links: {data.get('links_generated', 0)}\n"
         userlist_text += f"📅 Joined: {data.get('join_date', 'Unknown')}\n"
         userlist_text += "─" * 20 + "\n"
     
-    # Split message if too long
     if len(userlist_text) > 4000:
         chunks = [userlist_text[i:i+4000] for i in range(0, len(userlist_text), 4000)]
         for chunk in chunks:
@@ -436,7 +412,6 @@ def show_full_userlist(call):
     
     bot.answer_callback_query(call.id)
 
-# Broadcast command
 @bot.message_handler(commands=['broadcast'])
 def broadcast_command(message):
     user_id = str(message.from_user.id)
@@ -445,12 +420,10 @@ def broadcast_command(message):
         bot.send_message(message.chat.id, "⛔ This command is for admin only.")
         return
     
-    # Check if there's text after /broadcast
     if len(message.text.split()) > 1:
         broadcast_message = message.text.split(' ', 1)[1]
         start_broadcast(message.chat.id, broadcast_message)
     else:
-        # Show broadcast menu
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         
         templates = [
@@ -479,7 +452,6 @@ Or send: <code>/broadcast Your message here</code>
         
         bot.send_message(message.chat.id, broadcast_text, reply_markup=keyboard)
 
-# Broadcast menu callback
 @bot.callback_query_handler(func=lambda call: call.data.startswith("broadcast_"))
 def broadcast_menu(call):
     user_id = str(call.from_user.id)
@@ -489,11 +461,9 @@ def broadcast_menu(call):
         return
     
     if call.data == "broadcast_menu":
-        # Reshow broadcast menu
         broadcast_command(call.message)
     
     elif call.data == "broadcast_custom":
-        # Ask for custom message
         msg = bot.send_message(call.message.chat.id, 
                              "<b>✍️ Send your custom broadcast message:</b>\n\n(You can use HTML formatting)",
                              parse_mode='HTML')
@@ -513,7 +483,6 @@ def broadcast_menu(call):
     
     bot.answer_callback_query(call.id)
 
-# Process custom broadcast message
 def process_custom_broadcast(message):
     user_id = str(message.from_user.id)
     
@@ -522,18 +491,17 @@ def process_custom_broadcast(message):
     
     start_broadcast(message.chat.id, message.text)
 
-# Start broadcast
+temp_broadcast_message = None
+
 def start_broadcast(chat_id, message_text):
     users_data = load_users()
     total_users = len(users_data)
     
-    # Confirm broadcast
     keyboard = types.InlineKeyboardMarkup()
     confirm_btn = types.InlineKeyboardButton("✅ Confirm Broadcast", callback_data="confirm_broadcast")
     cancel_btn = types.InlineKeyboardButton("❌ Cancel", callback_data="cancel_broadcast")
     keyboard.add(confirm_btn, cancel_btn)
     
-    # Store message temporarily
     global temp_broadcast_message
     temp_broadcast_message = message_text
     
@@ -552,10 +520,6 @@ Click Confirm to send this message to all users.
     
     bot.send_message(chat_id, preview_text, reply_markup=keyboard)
 
-# Temporary storage for broadcast message
-temp_broadcast_message = None
-
-# Confirm broadcast callback
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_broadcast")
 def confirm_broadcast(call):
     user_id = str(call.from_user.id)
@@ -571,20 +535,17 @@ def confirm_broadcast(call):
     
     bot.answer_callback_query(call.id, "Broadcast started!")
 
-# Cancel broadcast callback
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
 def cancel_broadcast(call):
     bot.answer_callback_query(call.id, "Broadcast cancelled!")
     bot.delete_message(call.message.chat.id, call.message.message_id)
 
-# Actual broadcast function
 def actual_broadcast(chat_id, message_text):
     users_data = load_users()
     total_users = len(users_data)
     total_sent = 0
     failed_sent = 0
     
-    # Save broadcast record
     broadcasts = load_broadcasts()
     broadcasts.append({
         'message': message_text,
@@ -593,27 +554,23 @@ def actual_broadcast(chat_id, message_text):
     })
     save_broadcasts(broadcasts)
     
-    # Send to admin first
     progress_msg = bot.send_message(chat_id, "📤 Starting broadcast...")
     
-    # Send to all users
     for user_id in users_data:
         try:
             bot.send_message(int(user_id), message_text)
             total_sent += 1
             
-            # Update progress every 10 users
             if total_sent % 10 == 0:
                 bot.edit_message_text(
                     f"📤 Broadcasting... ({total_sent}/{total_users})",
                     chat_id, progress_msg.message_id
                 )
             
-            time.sleep(0.05)  # Prevent flooding
+            time.sleep(0.05)
         except Exception as e:
             failed_sent += 1
     
-    # Send report
     report_text = f"""
 <b>✅ Broadcast Completed!</b>
 
@@ -624,13 +581,12 @@ def actual_broadcast(chat_id, message_text):
 📅 Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 <b>💬 Message Sent:</b>
-{html.escape(message_text[:200])}...
+{escape_html(message_text[:200])}...
 """
     
     bot.delete_message(chat_id, progress_msg.message_id)
     bot.send_message(chat_id, report_text)
 
-# Callback query handler
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.data == "generate":
@@ -650,7 +606,7 @@ def callback_query(call):
             copy_text = f"""
 <b>📋 Copy this link:</b>
 
-<code>{html.escape(latest_link)}</code>
+<code>{escape_html(latest_link)}</code>
 
 (Select and copy the text above)
 """
@@ -671,14 +627,12 @@ if __name__ == "__main__":
     print(f"📢 Required Channels: {len(REQUIRED_CHANNELS)}")
     print("=" * 50)
     
-    # Create necessary files if not exist
     if not os.path.exists(USERS_FILE):
         save_users({})
     
     if not os.path.exists(BROADCAST_FILE):
         save_broadcasts([])
     
-    # Test bot token first
     try:
         bot_info = bot.get_me()
         if bot_info:
@@ -695,7 +649,6 @@ if __name__ == "__main__":
         print("Please check your bot token and try again.")
         exit(1)
     
-    # Start polling with error handling
     while True:
         try:
             print("🔄 Starting bot polling...")
